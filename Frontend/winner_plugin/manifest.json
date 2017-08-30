@@ -1,0 +1,40 @@
+﻿{
+	"name":"tm_plugin",
+	"version":"1.0.0.0",
+	"manifest_version":2,
+	"description":"天猫数据同步工具",
+	"browser_action":{
+		"default_icon":{
+			"19":"images/icon_19.png",
+			"38":"images/icon_38.png"
+		},
+		"default_title":"天猫数据同步工具",
+		"default_popup": "popup/popup.html"
+	},
+	"icons": {
+		"32": "images/icon_32.png",
+		"64": "images/icon_64.png",
+		"128": "images/icon_128.png"
+	},
+	// "default_popup": "popup.html",
+	"homepage_url" : "http://192.168.3.132",
+	"background":{ "scripts": ["js/jquery-1.10.1.js","js/moment.js","js/linq.min.js","js/libs/lodash.core.js", "js/common.js","js/eventPage.js"] },
+	"content_scripts":[
+		{
+			"matches":["https://trade.taobao.com/detail/*"],
+			"js":["js/jquery-1.10.1.js","js/libs/lodash.core.js", "js/parseDetail.js"]
+		},
+		{
+			"matches" : ["https://trade.taobao.com/trade/itemlist/*"],
+			"js":["js/jquery-1.10.1.js","js/libs/lodash.core.js", "js/parseList.js"]
+		}
+	],
+	"permissions": [
+		"tabs", 
+		"alarms",
+	    "cookies",
+	    "storage",
+		"https://*/*",
+		"http://*/*"
+  ]
+}

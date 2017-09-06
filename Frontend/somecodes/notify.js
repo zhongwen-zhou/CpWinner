@@ -61,13 +61,15 @@
 
   function parse11x5(data){
     console.log('=====分析任一=======');
-    data = JSON.parse(data);
+    // data = JSON.parse(data);
     var all = data['all'];
     for(var key in all){
       var value = all[key]['m'];
       console.log('分析:'+key+', 间隔值为：'+ value);
       if(value > GLOBAL_CONFIG.THRESHOLD['11x5']['r1']){
         logAndNotify(currentGame.name, '任一', key, value);
+
+        monitor11x5R1(currentGame.id, key, -100);
       } 
     }
 
@@ -80,7 +82,10 @@
       for(var key in data){
         var value = data[key]['m'];
         if(i < 3 && value > GLOBAL_CONFIG.THRESHOLD['11x5']['dw']){
-          logAndNotify(currentGame.name, '定位-'+(i+1), key, value);        
+          logAndNotify(currentGame.name, '定位-'+(i+1), key, value);     
+
+          monitor11x5Dw(currentGame.id, i+1, key, -100);
+
         }
       }
     }
@@ -88,7 +93,7 @@
 
   function parsepk10(data){
     console.log('=====分析北京赛车定位=======');
-    data = JSON.parse(data);
+    // data = JSON.parse(data);
     var oneData = data['one'];
     for(var i = 0; i<oneData.length; i++){
       var data = oneData[i];
@@ -97,6 +102,7 @@
         var value = data[key]['m'];
         if(value > GLOBAL_CONFIG.THRESHOLD['pk10']['dw']){
           logAndNotify('北京赛车', '定位-'+(i+1), key, value);
+          monitorPk10OpenGame(key, value, -100);
         }
       }
     }
@@ -111,31 +117,36 @@
         id :6,
         name: '北京赛车',
         url: 'http://cbou1.diusx.com:880/z/gCAR-analyzeAjax',
-        data: {gi : 6}
+        data: {gi : 6},
+        latestResponse : ''
       },
       '7' :{
         id :7,
         name: '广东11选5',
         url: 'http://cbou1.diusx.com:880/z/gEE5-analyzeAjax',
-        data: {gi : 7}      
+        data: {gi : 7},
+        latestResponse : ''
       },
       '8' :{
         id: 8,
         name: '上海11选5',
         url: 'http://cbou1.diusx.com:880/z/gEE5-analyzeAjax',
-        data: {gi : 8}      
+        data: {gi : 8},
+        latestResponse : '' 
       },
       '9' :{
         id: 9,
         name: '山东选5',
         url: 'http://cbou1.diusx.com:880/z/gEE5-analyzeAjax',
-        data: {gi : 9}      
+        data: {gi : 9},
+        latestResponse : '' 
       },
       '10' :{
         id:10,
         name: '江西11选5',
         url: 'http://cbou1.diusx.com:880/z/gEE5-analyzeAjax',
-        data: {gi : 10}      
+        data: {gi : 10},
+        latestResponse : ''  
       }
     },
     THRESHOLD : {
@@ -149,11 +160,116 @@
     }
   }
 
+  function runResponse(game_id, responseData, callback){
+    if(GLOBAL_CONFIG.GAMES[game_id]['latestResponse'] == responseData){
+      return;
+    }
+
+    GLOBAL_CONFIG.GAMES[game_id]['latestResponse'] = responseData;
+    var _data = JSON.parse(responseData);
+
+    //  监控预测情况
+    console.log('-----');
+    console.log('开始分析推荐情况');
+    callback(_data);
+
+    //  监控开奖情况
+    runOpenRewardsMonitor(game_id, _data);
+    console.log('-----');
+    console.log('开始分析开奖情况');    
+  }
 
   function runPk10(){
       var game = GLOBAL_CONFIG.GAMES['6'];
       console.log('------'+new Date()+'-----开始分析北京赛车------------------');
-      $.post(game.url,game.data, function(data){parsepk10(data)});  
+      $.post(game.url,game.data, function(data){
+        runResponse(6, data, parsepk10); 
+      });  
+  }
+
+  function runOpenRewardsMonitor(_game_id, _data){
+    if(_game_id == 6){
+      for(var monitorName in monitorIds){
+        if(monitorName.indexOf('pk10')>-1){
+          // var monitorName = 'pk10-'+'dw-'+key+'-'+index;
+          var gameStrs = monitorName.split('-');
+          var key = gameStrs[2];
+          var index = gameStrs[3];
+          var oneData = _data['one'];
+          var _resultData = oneData[key-1][index]['m'];        
+
+          if(_resultData == 0){
+
+            var record = orderRecord[monitorName][orderRecord[monitorName].length - 1];
+            record.open_at = new Date();
+            record.open_status = 'win'
+            if(record.money == -100){
+              logAndNotifyOpen('[准备购买] 北京赛车 已开奖', key+'---'+index);  
+            }else{
+              logAndNotifyOpen('北京赛车 已开奖', key+'---'+index);                
+            }
+            delete(monitorIds[monitorName]);
+          }      
+        }        
+      }
+
+    }else{
+      //  监控11选5
+
+      for(var monitorName in monitorIds){
+        if(monitorName.indexOf('11x5')>-1){
+          if(monitorName.indexOf('r1-')>-1){
+            //    监控任一
+            var gameStrs = monitorName.split('-');
+            var game_id = gameStrs[1];
+            if(_game_id == game_id){            
+              var key = gameStrs[3];
+              var game = GLOBAL_CONFIG.GAMES[game_id];
+              // var monitorName = '11x5-'+game_id+'-'+'r1-'+key;          
+              var _resultData = _data['all'][key]['m'];
+              if(_resultData == 0){
+                var record = orderRecord[monitorName][orderRecord[monitorName].length - 1];
+                record.open_at = new Date();
+                record.open_status = 'win'          
+                if(record.money == -100){                  
+                  logAndNotifyOpen('[准备购买] '+game.name+' 任一 已开奖', key);       
+                }else{                  
+                  logAndNotifyOpen(game.name+' 任一 已开奖', key);       
+                }                
+                delete(monitorIds[monitorName]);
+              }   
+            }
+          }    
+
+          if(monitorName.indexOf('dw-')>-1){
+            //  监控定位
+            // var monitorName = '11x5-'+game_id+'-'+'dw-'+key+'-'+index;
+            var gameStrs = monitorName.split('-');
+            var game_id = gameStrs[1];
+            if(_game_id == game_id){            
+              var key = gameStrs[3];
+              var index = gameStrs[4];
+
+              var _resultData = _data['one'][key-1][index]['m'];
+              if(_resultData == 0){
+                var record = orderRecord[monitorName][orderRecord[monitorName].length - 1];
+                record.open_at = new Date();
+                record.open_status = 'win'          
+
+                if(record.money == -100){                  
+                  
+                  logAndNotifyOpen('[准备购买] '+game.name+' 定位 '+key+' 已开奖', key+'-'+index);            
+                }else{                  
+                  
+                  logAndNotifyOpen(game.name+' 定位 '+key+' 已开奖', key+'-'+index);            
+                }                       
+                delete(monitorIds[monitorName]);
+              }      
+            }
+          }
+        }        
+      }   
+    }
   }
 
   function run11x5(){
@@ -161,7 +277,10 @@
       currentGame = games[currentIndex];
 
       console.log('------'+new Date()+'----开始分析-----------'+currentGame['name']);    
-      $.post(currentGame.url,currentGame.data, function(data){parse11x5(data)});    
+
+      $.post(currentGame.url,currentGame.data, function(data){
+        runResponse(currentIndex, data, parse11x5);
+      });
 
       currentIndex++;
       if(currentIndex == 11){
@@ -204,21 +323,7 @@
     };
 
     records.push(record);
-    monitorIds[monitorName] = setInterval(function(){
-      $.post(game.url,game.data, function(data){
-      console.log('跟踪'+game.name+' 定位 '+key+' - '+index+' 开奖情况');
-        data = JSON.parse(data);
-        var oneData = data['one'];
-        var _resultData = oneData[key-1][index]['m'];
-        if(_resultData == 0){
-          logAndNotifyOpen('北京赛车 已开奖', key+'---'+index);
-          clearInterval(monitorIds[monitorName]);
-          delete(monitorIds[monitorName]);
-          record.open_at = new Date();
-          record.open_status = 'win'
-        }
-      });
-    }, 1000 * 60 * 3);
+    monitorIds[monitorName] = 'start';
   }
 
   /**
@@ -250,21 +355,7 @@
     };
 
     records.push(record);
-
-    monitorIds[monitorName] = setInterval(function(){
-      $.post(game.url,game.data, function(data){
-      console.log('跟踪'+game.name+' 任一 '+key+' 开奖情况');
-        data = JSON.parse(data);
-        var _resultData = data['all'][key]['m'];
-        if(_resultData == 0){
-          logAndNotifyOpen(game.name+' 任一 已开奖', key);
-          clearInterval(monitorIds[monitorName]);
-          delete(monitorIds[monitorName]);
-          record.open_at = new Date();
-          record.open_status = 'win'          
-        }   
-      });
-    }, 1000 * 60 * 5);
+    monitorIds[monitorName] = 'start';
   }
 
   /**
@@ -272,7 +363,7 @@
    *  monitor11x5Dw(7, 3, '08')
    *  广东11选5-定位-第三名-'08'号
    */
-  function monitor11x5Dw(game_id, key, index){
+  function monitor11x5Dw(game_id, key, index, money){
     var monitorName = '11x5-'+game_id+'-'+'dw-'+key+'-'+index;
     var game = GLOBAL_CONFIG.GAMES[game_id];
 
@@ -298,22 +389,7 @@
     };
 
     records.push(record);
-
-
-    monitorIds[monitorName] = setInterval(function(){
-      $.post(game.url,game.data, function(data){
-      console.log('跟踪'+game.name+' 定位 '+key+' - '+index+' 开奖情况');
-        data = JSON.parse(data);
-        var _resultData = data['one'][key-1][index]['m'];
-        if(_resultData == 0){
-          logAndNotifyOpen(game.name+' 定位 '+key+' 已开奖', key+'-'+index);
-          clearInterval(monitorIds[monitorName]);
-          delete(monitorIds[monitorName]);
-          record.open_at = new Date();
-          record.open_status = 'win'          
-        }   
-      });
-    }, 1000 * 60 * 5);
+    monitorIds[monitorName] = 'start';
   }
 
   /**
@@ -321,9 +397,11 @@
    *
    */
   function init(){
-    var orderRecordStr = localStorage.getItem('orderRecord');
-    if(orderRecord){
+    var orderRecordStr = localStorage.getItem('orderRecord');    
+    if(orderRecordStr && orderRecordStr != '' && orderRecordStr != 'null'){
       orderRecord = JSON.parse(orderRecordStr);
+    }else{
+      orderRecord = {};
     }
   }
 

@@ -135,7 +135,7 @@ function parsepk10(data){
       var value = data[key]['m'];
       if(value > GLOBAL_CONFIG.THRESHOLD['pk10']['dw']){
         logAndNotify('北京赛车', '定位-'+(i+1), key, value);
-        monitorPk10OpenGame(key, value, -100);
+        monitorPk10OpenGame(i, key, -100);
       }
     }
   }

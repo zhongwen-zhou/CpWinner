@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>心米-图表展示</title>
+    <meta charset="utf-8"/>
+    <script src="../js/jquery-1.10.1.js"></script>
+    <script src="../js/libs/echarts.js"></script>
+</head>
+<body>
+    <div id="myChart" style="height: 500px;width: 1200px">
+    </div>
+</body>
+<script type="text/javascript">
+    /**
+    * @description 初始化echarts图表
+    * @param id echarts初始化所需容器id，需设置宽度与高度
+    * @param data 图表所需数据；格式为[[100,50],[200,60]]
+    * @param yAxisData 纵坐标数据，为空时为默认值;考虑根据所传数据自动设置纵坐标
+    * @param startValue 设置展示数据开始位置，默认为data[0][0]
+    * @param pieces 设置图表右上角区块；为空时为默认值；考虑根据数据自动生成
+    * @param titleText 标题；默认值为空
+    * @param showText hover时暂时数据标题；默认值为空
+    */
+    var initChart = function(id,data,yAxisData,startValue,pieces,titleText,showText){
+        var myChart = echarts.init(document.getElementById(id));
+        
+        var defaultPieces = [{
+                    gt: 0,
+                    lte: 20,
+                    color: '#096'
+                }, {
+                    gt: 20,
+                    lte: 40,
+                    color: '#ffde33'
+                }, {
+                    gt: 40,
+                    lte: 60,
+                    color: '#ff9933'
+                }, {
+                    gt: 60,
+                    lte: 80,
+                    color: '#cc0033'
+                }, {
+                    gt: 80,
+                    lte: 100,
+                    color: '#660099'
+                },{
+                    gt: 100,
+                    lte: 120,
+                    color: '#2c0f63'
+                }];
+        var defaultYAxisData = [{
+                        yAxis: 20
+                    }, {
+                        yAxis: 40
+                    }, {
+                        yAxis: 60
+                    }, {
+                        yAxis: 80
+                    }, {
+                        yAxis: 100
+                    },{
+                        yAxis: 120
+                    }];
+        startValue = startValue || data[0][0].toString();
+        pieces = pieces || defaultPieces;
+        yAxisData = yAxisData || defaultYAxisData;
+        titleText = titleText || '';
+        showText = showText || '';
+        var option = {
+            title: {
+                text: titleText
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            xAxis: {
+                data: data.map(function (item) {
+                    return item[0];
+                })
+            },
+            yAxis: {
+                splitLine: {
+                    show: false
+                }
+            },
+            toolbox: {
+                left: 'center',
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    },
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            dataZoom: [{
+                startValue:startValue
+            }, {
+                type: 'inside'
+            }],
+            visualMap: {
+                top: 10,
+                right: 10,
+                pieces: pieces,
+                outOfRange: {
+                    color: '#999'
+                }
+            },
+            series: {
+                name: showText,
+                type: 'line',
+                data: data.map(function (item) {
+                    return item[1];
+                }),
+                markLine: {
+                    silent: true,
+                    data: yAxisData
+                }
+            }
+        }
+        myChart.setOption(option);
+    } 
+    var data = [
+            [100,20],
+            [200,50],
+            [300,110],
+            [400,100],
+            [500,80]
+        ];
+    initChart('myChart',data);
+</script>
+</html>

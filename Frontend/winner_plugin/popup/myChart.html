@@ -131,12 +131,14 @@
 <script type="text/javascript">
   $('#startBtn').click(function(){    
     var url = 'http://localhost:8080/cp/search.json';
+    // 要求填写数字
     var requestData = {
       startInterval : $("[name=startInterval]").val(),
       endInterval : $("[name=endInterval]").val(),
       index : $("[name=index]").val()
     };
 
+    alert('运行该服务将耗时大概一分钟，请耐心等待……');
     console.log(requestData);
     // return false;
     $.get(url, requestData, function(data){

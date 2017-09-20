@@ -220,6 +220,8 @@ function parsepk10(data){
     runOpenRewardsMonitor(game_id, _data);
     console.log('-----');
     console.log('开始分析开奖情况');    
+
+    //  监控自定义监控提醒
   }
 
   function runPk10(){
@@ -232,6 +234,29 @@ function parsepk10(data){
 
   function runOpenRewardsMonitor(_game_id, _data){
     if(_game_id == 6){
+      for(var monitorName in monitorPreWarnIds){
+        if(monitorName.indexOf('pk10')>-1){
+          // var monitorName = 'pk10-'+'dw-'+key+'-'+index;
+          var gameStrs = monitorName.split('-');
+          var key = gameStrs[2];
+          var index = gameStrs[3];
+          var oneData = _data['one'];
+          var _resultData = oneData[key-1][index]['m'];        
+          var record = monitorPreRecord[monitorName][monitorPreRecord[monitorName].length - 1];
+
+          if(_resultData == record.value){
+
+            record.open_at = new Date();
+            record.open_status = 'win'
+            
+              logAndNotifyOpen('[检测提醒] 北京赛车 已到阈值', key+'---'+index+'-----'+record.value);
+            
+            delete(monitorPreWarnIds[monitorName]);
+          }      
+        }        
+      }
+
+
       for(var monitorName in monitorIds){
         if(monitorName.indexOf('pk10')>-1){
           // var monitorName = 'pk10-'+'dw-'+key+'-'+index;
@@ -332,8 +357,13 @@ function parsepk10(data){
   }
 
 
+  //监控开奖情况
   var monitorIds = {};
 
+  //自定义监控
+  var monitorPreWarnIds = {};
+  var monitorPreRecord = {};
+  //开奖记录
   var orderRecord = {};
 
   /**
@@ -366,8 +396,43 @@ function parsepk10(data){
     };
 
     records.push(record);
-    monitorIds[monitorName] = 'start';
+    monitorPreWarnIds[monitorName] = 'start';
   }
+
+  /**
+   *  监控北京赛车游戏开奖情况
+   *  monitorPk10OpenGame(4, 5);
+   *  北京赛车-定位-第四名-5号车
+   */
+  function monitorPk10CustomGame(key, index, value){
+    var monitorName = 'pk10-'+'dw-'+key+'-'+index;
+    var game = GLOBAL_CONFIG.GAMES['6'];
+    
+    var records = monitorPreRecord[monitorName];
+    if(records){
+
+    }else{
+      monitorPreRecord[monitorName] = [];
+      records = monitorPreRecord[monitorName];
+    }
+
+    var record = {
+      name: game.name,
+      playWay: '定位',
+      key: key,
+      index: index,
+      value: value,
+      order_at: new Date(),
+      open_at: null,
+      open_status : 'wait',
+      remark: 'test'
+    };
+
+    records.push(record);
+    monitorPreWarnIds[monitorName] = 'start';
+  }
+
+
 
   /**
    *  监控11选5-任一-开奖情况
@@ -446,6 +511,30 @@ function parsepk10(data){
     }else{
       orderRecord = {};
     }
+
+
+    var monitorIdsStr = localStorage.getItem('monitorIds');    
+    if(monitorIdsStr && monitorIdsStr != '' && monitorIdsStr != 'null'){
+      monitorIds = JSON.parse(monitorIdsStr);
+    }else{
+      monitorIds = {};
+    }
+
+    
+    var monitorPreRecordStr = localStorage.getItem('monitorPreRecord');    
+    if(monitorPreRecordStr && monitorPreRecordStr != '' && monitorPreRecordStr != 'null'){
+      monitorPreRecord = JSON.parse(monitorPreRecordStr);
+    }else{
+      monitorPreRecord = {};
+    }
+
+    var monitorPreWarnIdsStr = localStorage.getItem('monitorPreWarnIds');    
+    if(monitorPreWarnIdsStr && monitorPreWarnIdsStr != '' && monitorPreWarnIdsStr != 'null'){
+      monitorPreWarnIds = JSON.parse(monitorPreWarnIdsStr);
+    }else{
+      monitorPreWarnIds = {};
+    }
+    
   }
 
   function startMonitor(){
@@ -474,7 +563,10 @@ function parsepk10(data){
 
 
   function saveToLocalDb(){
-    localStorage.setItem('orderRecord', JSON.stringify(orderRecord));  
+    localStorage.setItem('orderRecord', JSON.stringify(orderRecord));    
+    localStorage.setItem('monitorIds', JSON.stringify(monitorIds));
+    localStorage.setItem('monitorPreWarnIds', JSON.stringify(monitorPreWarnIds));
+    localStorage.setItem('monitorPreRecord', JSON.stringify(monitorPreRecord));    
   }
 
 
